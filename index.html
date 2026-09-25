@@ -16,7 +16,7 @@
 <style>html{background:#000}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>둘의 메모 3안</title>
+<title>둘의 메모</title>
 <style>
 :root{
   --bg:#000; --card:#161616; --card-2:#1F1F1F; --ink:#EDEDED; --muted:#8A8A8A; --dim:#5A5A5A; --line:#3A3A3A; --rule:#242424;
@@ -853,10 +853,10 @@ window.addEventListener('resize', () => { for (const p of PANES) growLayer(p); }
 #lock .dots i.on{background:#EDEDED;border-color:#EDEDED}
 #lock .dots.shake{animation:shake .35s}
 @keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
-#lock .pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-top:8px}
-#lock .pad button{height:72px;border-radius:50%;border:0;background:#161616;color:#EDEDED;font:inherit;font-size:26px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#lock .pad button:active{background:#2A2A2A}
-#lock .pad button.ghost{background:transparent;color:#8A8A8A;font-size:14px}
+#lock .lk-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-top:8px}
+#lock .lk-pad button{height:72px;border-radius:50%;border:0;background:#161616;color:#EDEDED;font:inherit;font-size:26px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#lock .lk-pad button:active{background:#2A2A2A}
+#lock .lk-pad button.ghost{background:transparent;color:#8A8A8A;font-size:14px}
 #lock .reset{background:none;border:0;color:#5A5A5A;font:inherit;font-size:12px;margin-top:10px;cursor:pointer;text-decoration:underline}
 </style>
 <div id="lock" hidden>
@@ -864,7 +864,7 @@ window.addEventListener('resize', () => { for (const p of PANES) growLayer(p); }
   <h2 id="lkTitle">비밀번호</h2>
   <p id="lkHint"></p>
   <div class="dots" id="lkDots"><i></i><i></i><i></i><i></i></div>
-  <div class="pad" id="lkPad">
+  <div class="lk-pad" id="lkPad">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
     <button>7</button><button>8</button><button>9</button>
