@@ -189,7 +189,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"A
   <ol>
     <li><b>카드 두 장</b> — 위는 상대 메모, 아래는 내 메모. <b>빈 곳을 툭 누르면 그 자리에 글이 시작</b>되고, 적은 글 덩어리는 눌러서 끌면 아무 데나 옮겨진다. 두 손가락으로 글씨 크기를 키우고 줄인다.</li>
     <li><b>정리</b> — 글 덩어리를 한 번 눌러 편집 상태로 만든 뒤 드래그해서 고르면 “정리 / 상대에게 날리기” 버튼. 정리하면 주제별 묶음이 되고, 묶음도 똑같이 끌어서 옮기고 키운다.</li>
-    <li><b>사진 속 날짜 자동 인식</b> — 유통기한 라벨, 티켓, 영수증 사진을 넣으면 날짜를 읽어 사진 옆에 “📷 유통기한 10월 2일” 글이 붙고, 그게 바로 D-day 칩이 된다(claude.ai에서 열었을 때).</li>
+    <li><b>사진 속 글·날짜 자동 인식</b> — 손글씨 메모나 다른 메모앱 캡처를 넣으면 글자를 읽어 사진 아래에 편집 가능한 글로 옮겨 적는다. 유통기한 라벨·티켓·영수증이면 날짜를 읽어 “📷 유통기한 10월 2일”이 붙고 바로 D-day 칩이 된다. 가져오기(⤓)의 “손글씨·캡처 사진으로”는 사진 없이 글만 들여온다(claude.ai에서 열었을 때).</li>
       <li><b>표·사진·동영상</b> — 글과 똑같다. 아무 데나 눌러 끌면 옮겨지고, 두 손가락으로 키우고 줄인다. 표는 칸을 톡 치면 입력, 점선 손잡이를 끌면 칸이 는다. 넣기는 “···” 메뉴.</li>
     <li><b>날리기</b> — 글·표·사진을 상대 카드 위로 끌어다 놓으면 내 것은 그대로, 상대 휴대폰에 푸시(상단 카드 = 푸시 목업). 상대 카드의 “알림”에 쌓인다.</li>
     <li><b>작성 중</b> — 한쪽이 적으면 다른 카드 이름 옆에 “적는 중…”. 실시간 공유.</li>
@@ -719,30 +719,48 @@ filePick.addEventListener('change', () => {
 });
 /* photo of a label → Claude reads the date → a text piece appears next to the photo → it becomes a D-day chip */
 let canSeeImages = null;
-async function readLabel(p, o, el, file) {
-  if (!sampleFn) return;
+async function readPhoto(file) {
+  // → { text, dates } or null when Claude can't look at images here
+  if (!sampleFn) return null;
   if (canSeeImages === null) { try { canSeeImages = !!(await sampleFn.limits()).images; } catch { canSeeImages = false; } }
-  if (!canSeeImages) return;
-  const lab = el.querySelector('.mlabel'); const was = lab.textContent; lab.textContent = '날짜 읽는 중…';
+  if (!canSeeImages) return null;
+  const out = await sampleFn.json(
+    '이 사진을 읽어 주세요. 손글씨 메모, 다른 메모앱 캡처, 포장 라벨, 영수증, 티켓, 안내문 중 하나입니다.\n' +
+    '1) text: 사진에 적힌 글을 있는 그대로 옮겨 적기. 줄바꿈은 원문대로, 맞춤법은 고치지 말고, 읽기 어려운 글자는 (?)로. 글이 없거나 풍경·사람 사진이면 빈 문자열.\n' +
+    '2) dates: 사진 속 날짜(유통기한, 소비기한, 행사일, 예약일, 메모에 적힌 날짜). 연도가 없으면 year는 null. 없으면 빈 배열.\n' +
+    '반드시 JSON 객체 하나만 출력: {"text":"…","dates":[{"what":"유통기한","year":2026,"month":10,"day":2}]}', { images: file, modelTier: 'quick' });
+  const text = (out && typeof out.text === 'string') ? out.text.trim() : '';
+  const dates = (out && Array.isArray(out.dates)) ? out.dates.filter(d => d && d.month >= 1 && d.month <= 12 && d.day >= 1 && d.day <= 31) : [];
+  return { text, dates };
+}
+function placeText(p, text, x, y, size) {
+  const t = { id: uid(), type: 'text', x, y, size: size || 15.5, w: Math.min(320, canvasOf(p).clientWidth - 40), text };
+  state()[p].objects.push(t); const te = makeObj(p, t); layerOf(p).appendChild(te);
+  te.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
+  return t;
+}
+async function readLabel(p, o, el, file) {
+  const lab = el.querySelector('.mlabel'); const was = lab.textContent; lab.textContent = '사진 읽는 중…';
   try {
-    const out = await sampleFn.json(
-      '이 사진은 식품 포장, 영수증, 티켓, 안내문 등입니다. 사진 속에 보이는 날짜(유통기한, 소비기한, 행사일, 예약일 등)를 찾으세요. ' +
-      '연/월/일이 함께 있으면 그대로, 연도가 없으면 year는 null. 날짜가 없으면 빈 배열. ' +
-      '반드시 JSON 배열만 출력: [{"what":"유통기한","year":2026,"month":10,"day":2}]', { images: file, modelTier: 'quick' });
-    const found = Array.isArray(out) ? out.filter(d => d && d.month >= 1 && d.month <= 12 && d.day >= 1 && d.day <= 31) : [];
-    lab.textContent = was;
-    if (!found.length) { tip('사진에서 날짜를 못 찾았어요'); return; }
-    const lines = found.slice(0, 3).map(d => `${(d.what || '날짜').toString().slice(0, 8)} ${d.month}월 ${d.day}일${d.year ? ` (${d.year})` : ''}`);
-    const t = { id: uid(), type: 'text', x: o.x + (o.w || 200) + 14, y: o.y + 4, size: 14, text: '📷 ' + lines.join('\n') };
-    if (t.x > canvasOf(p).clientWidth - 120) { t.x = o.x; t.y = o.y + el.offsetHeight + 10; }
-    state()[p].objects.push(t); const te = makeObj(p, t); layerOf(p).appendChild(te);
-    te.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
-    save(); refreshReminders(p); growLayer(p); tip('사진에서 날짜를 읽어 D-day로 붙였어요');
+    const r = await readPhoto(file); lab.textContent = was; if (!r) return;
+    let below = o.y + el.offsetHeight + 12;
+    if (r.text.length >= 6) { // handwriting or a screenshot of another memo → editable text next to the photo
+      const t = placeText(p, r.text, o.x, below, 15); below += 40 + Math.ceil(r.text.length / 24) * 24;
+      void t;
+    }
+    if (r.dates.length) {
+      const lines = r.dates.slice(0, 3).map(d => `${(d.what || '날짜').toString().slice(0, 8)} ${d.month}월 ${d.day}일${d.year ? ` (${d.year})` : ''}`);
+      let x = o.x + (o.w || 200) + 14, y = o.y + 4; if (x > canvasOf(p).clientWidth - 120) { x = o.x; y = below; }
+      placeText(p, '📷 ' + lines.join('\n'), x, y, 14);
+    }
+    if (!r.text && !r.dates.length) { tip('사진에서 글이나 날짜를 못 찾았어요'); return; }
+    save(); refreshReminders(p); growLayer(p);
+    tip(r.text.length >= 6 ? '사진 속 글을 옮겨 적었어요. 필요 없으면 사진은 지워도 돼요' : '사진에서 날짜를 읽어 D-day로 붙였어요');
   } catch (e) {
     lab.textContent = was;
     if (e && ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled'].includes(e.code)) sampleFn = null;
     else if (e && e.code === 'images_unavailable') canSeeImages = false;
-    else if (e && e.code !== 'cancelled') tip('사진 읽기에 실패했어요. 날짜를 직접 적어 주세요');
+    else if (e && e.code !== 'cancelled') tip('사진 읽기에 실패했어요. 직접 적어 주세요');
   }
 }
 document.addEventListener('click', e => { if (openMenu && !e.target.closest('.menu')) closeMenus(); if (!e.target.closest('.obj')) document.querySelectorAll('.obj.active').forEach(x => x.classList.remove('active')); });
@@ -760,11 +778,13 @@ importSheet.innerHTML = `<div class="sheet">
   <div class="imp">
     <div class="share-mock"><span>📱 실제 앱에서는</span> 아이폰 메모 → 공유 → <b>“둘의 메모로 보내기”</b> 한 번이면 끝. 여기서는 붙여넣기로 흉내 냅니다.</div>
     <textarea id="impText" rows="7" placeholder="아이폰 메모에서 전체 선택 → 복사 → 여기에 붙여넣기
-(첫 줄에 2023년 12월 18일 처럼 날짜가 있으면 그 날짜 메모장으로 들어가요)"></textarea>
+(첫 줄에 2023년 12월 18일 처럼 날짜가 있으면 그 날짜 메모장으로 들어가요)
+손으로 쓴 메모나 다른 앱 캡처는 아래 사진 버튼으로"></textarea>
     <div class="imp-row">
       <label class="seg"><input type="radio" name="impTo" value="me" checked> 내 카드로</label>
       <label class="seg"><input type="radio" name="impTo" value="partner"> 상대 카드로</label>
       <button id="impFileBtn" type="button">파일로 (.txt/.md 여러 개)</button>
+      <button id="impPhotoBtn" type="button">📷 손글씨·캡처 사진으로</button>
       <button id="impGo" type="button" class="primary">가져오기</button>
     </div>
     <div id="impLog" class="imp-log"></div>
@@ -775,6 +795,22 @@ importSheet.addEventListener('click', e => { if (e.target === importSheet) impor
 document.getElementById('importBtn').addEventListener('click', () => { importSheet.hidden = false; document.getElementById('impText').focus(); });
 const impFiles = document.createElement('input'); impFiles.type = 'file'; impFiles.accept = '.txt,.md,text/plain,text/markdown'; impFiles.multiple = true; impFiles.hidden = true; document.body.appendChild(impFiles);
 document.getElementById('impFileBtn').addEventListener('click', () => { impFiles.value = ''; impFiles.click(); });
+const impPhotos = document.createElement('input'); impPhotos.type = 'file'; impPhotos.accept = 'image/*'; impPhotos.multiple = true; impPhotos.hidden = true; document.body.appendChild(impPhotos);
+document.getElementById('impPhotoBtn').addEventListener('click', () => {
+  if (!sampleFn) { tip('사진 읽기는 claude.ai에서 열었을 때만 돼요'); return; }
+  impPhotos.value = ''; impPhotos.click();
+});
+impPhotos.addEventListener('change', async () => {
+  const fs = [...impPhotos.files]; if (!fs.length) return; const log = document.getElementById('impLog'); let n = 0;
+  for (let i = 0; i < fs.length; i++) {
+    log.textContent = `사진 ${i + 1}/${fs.length} 읽는 중…`;
+    try { const r = await readPhoto(fs[i]); if (!r) { log.textContent = '이 화면에서는 사진을 읽을 수 없어요'; return; }
+      const body = r.text + (r.dates.length ? '\n' + r.dates.slice(0, 3).map(d => `📷 ${(d.what || '날짜').toString().slice(0, 8)} ${d.month}월 ${d.day}일`).join('\n') : '');
+      if (body.trim()) { importMemo(body, impTarget()); n++; }
+    } catch (e) { if (e && ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled'].includes(e.code)) { sampleFn = null; log.textContent = 'Claude 사용이 허용되지 않았어요'; return; } }
+  }
+  if (n) doneImport(n); else log.textContent = '사진에서 글을 못 찾았어요';
+});
 impFiles.addEventListener('change', async () => { const fs = [...impFiles.files]; let n = 0; for (const f of fs) { const t = await f.text(); if (t.trim()) { importMemo(t, impTarget(), f.name.replace(/\.(txt|md)$/i, '')); n++; } } doneImport(n); });
 document.getElementById('impGo').addEventListener('click', () => { const t = document.getElementById('impText').value; if (!t.trim()) { tip('붙여넣을 글이 없어요'); return; } importMemo(t, impTarget()); document.getElementById('impText').value = ''; doneImport(1); });
 function impTarget() { return document.querySelector('input[name="impTo"]:checked').value; }
