@@ -36,7 +36,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"A
 .daterow{display:flex;justify-content:center;align-items:center;gap:14px;color:var(--muted);font-size:13px}
 .daterow button{background:none;border:0;color:var(--ink);font-size:16px;cursor:pointer;padding:0 6px}
 .daterow .dot{width:8px;height:8px;border-radius:50%;background:var(--ink)}
-.cards{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
+.cards{flex:1;display:flex;flex-direction:column;gap:0;min-height:0;--split:0.16}
+.card[data-pane="me"]{flex:1 1 auto}
+/* the line between the two cards: drag it to give either side more room */
+.divider{flex:0 0 22px;display:grid;place-items:center;cursor:ns-resize;touch-action:none;user-select:none}
+.divider i{width:44px;height:5px;border-radius:3px;background:var(--line)}
+.divider.on i{background:var(--muted)}
+/* folded: only the head line shows, with a quiet one-line peek of the newest piece */
+.card.folded .rems,.card.folded .canvas,.card.folded .bellrow,.card.folded .more{display:none}
+.card.folded .chead{padding-bottom:12px}
+.peek{display:none;margin-left:auto;max-width:55%;color:var(--muted);font-size:12.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card.folded .peek{display:block}
+.card.folded .typing{margin-left:8px}
 /* the two simple cards */
 .card{flex:1;min-height:0;position:relative;background:var(--card);border-radius:26px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .15s}
 .card.target{box-shadow:0 0 0 2px var(--note) inset}
@@ -167,14 +178,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"A
   <div class="daterow" id="daterow"><span class="dot"></span></div>
   <main class="cards">
     <section class="card" data-pane="partner">
-      <div class="chead"><div class="av" data-av>여</div><div class="cname" contenteditable="true" spellcheck="false" data-name>여친</div><div class="typing" data-typing></div></div>
+      <div class="chead"><div class="av" data-av>여</div><div class="cname" contenteditable="true" spellcheck="false" data-name>여친</div><div class="typing" data-typing></div><div class="peek" data-peek></div></div>
       <div class="rems" data-rems></div>
       <div class="canvas" data-canvas><div class="layer" data-layer><div class="clock" data-clock></div><div class="spacer"></div><button class="empty" data-empty hidden>빈 곳을 눌러서 적기</button></div></div>
       <div class="bellrow"><button class="bell" data-bell>알림<b data-count></b></button></div>
       <button class="more" data-more>···</button>
     </section>
+    <div class="divider" id="divider" title="끌어서 두 카드의 크기를 바꿔요"><i></i></div>
     <section class="card" data-pane="me">
-      <div class="chead"><div class="av" data-av>나</div><div class="cname" contenteditable="true" spellcheck="false" data-name>나</div><div class="typing" data-typing></div></div>
+      <div class="chead"><div class="av" data-av>나</div><div class="cname" contenteditable="true" spellcheck="false" data-name>나</div><div class="typing" data-typing></div><div class="peek" data-peek></div></div>
       <div class="rems" data-rems></div>
       <div class="canvas" data-canvas><div class="layer" data-layer><div class="clock" data-clock></div><div class="spacer"></div><button class="empty" data-empty hidden>빈 곳을 눌러서 적기</button></div></div>
       <div class="bellrow"><button class="bell" data-bell>알림<b data-count></b></button></div>
@@ -187,7 +199,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"A
 <div id="help" class="help" hidden><div class="sheet">
   <h3>동작 설명 (와이어프레임 3안)</h3>
   <ol>
-    <li><b>카드 두 장</b> — 위는 상대 메모, 아래는 내 메모. <b>빈 곳을 툭 누르면 그 자리에 글이 시작</b>되고, 적은 글 덩어리는 눌러서 끌면 아무 데나 옮겨진다. 두 손가락으로 글씨 크기를 키우고 줄인다.</li>
+    <li><b>카드 두 장</b> — 위는 상대 메모, 아래는 내 메모. 평소엔 상대 카드가 위에 얇은 띠로 접혀 있고(이름 · 적는 중 · 방금 적은 한 줄), 두 카드 사이 손잡이를 끌면 반반이나 상대 전체로 바뀐다. 띠를 톡 치면 펼쳐진다. <b>빈 곳을 툭 누르면 그 자리에 글이 시작</b>되고, 적은 글 덩어리는 눌러서 끌면 아무 데나 옮겨진다. 두 손가락으로 글씨 크기를 키우고 줄인다.</li>
     <li><b>정리</b> — 글 덩어리를 한 번 눌러 편집 상태로 만든 뒤 드래그해서 고르면 “정리 / 상대에게 날리기” 버튼. 정리하면 주제별 묶음이 되고, 묶음도 똑같이 끌어서 옮기고 키운다.</li>
     <li><b>사진 속 글·날짜 자동 인식</b> — 손글씨 메모나 다른 메모앱 캡처를 넣으면 글자를 읽어 사진 아래에 편집 가능한 글로 옮겨 적는다. 유통기한 라벨·티켓·영수증이면 날짜를 읽어 “📷 유통기한 10월 2일”이 붙고 바로 D-day 칩이 된다. 가져오기(⤓)의 “손글씨·캡처 사진으로”는 사진 없이 글만 들여온다(claude.ai에서 열었을 때).</li>
       <li><b>표·사진·동영상</b> — 글과 똑같다. 아무 데나 눌러 끌면 옮겨지고, 두 손가락으로 키우고 줄인다. 표는 칸을 톡 치면 입력, 점선 손잡이를 끌면 칸이 는다. 넣기는 “···” 메뉴.</li>
@@ -210,7 +222,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const $p = (p, sel) => document.querySelector(`.card[data-pane="${p}"] ${sel}`);
 const paneEl = p => document.querySelector(`.card[data-pane="${p}"]`);
 const canvasOf = p => $p(p, '[data-canvas]'), layerOf = p => $p(p, '[data-layer]');
-const KEY = 'duo-memo-card-v6';
+const KEY = 'duo-memo-card-v7';
 let sampleFn = null, store, names, day;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const dkey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -257,6 +269,7 @@ function tip(msg) { const t = document.createElement('div'); t.className = 'tip'
 let typingT = {};
 function typingSignal(p) {
   const el = $p(otherOf(p), '[data-typing]'); el.innerHTML = `<i></i>${esc(names[p])} 적는 중…`;
+  $p(p, '[data-peek]').textContent = peekText(p);
   clearTimeout(typingT[p]); typingT[p] = setTimeout(() => { el.textContent = ''; }, 2500);
 }
 function excerpt(o) {
@@ -379,7 +392,7 @@ function renderRems(p) {
   }
   for (const r of state()[p].reminders || []) {
     const c = document.createElement('button'); c.type = 'button'; c.title = r.ctx;
-    if (r.kind === 'time') { c.className = 'rem' + (r.fired ? ' fired' : ''); c.textContent = `⏰ ${r.label}${r.fired ? ' · 완료' : ''}`; c.addEventListener('click', () => pushReminder(p, r.ctx, '지금 할 시간이에요', '⏰', true)); }
+    if (r.kind === 'time') { c.className = 'rem' + (r.fired ? ' fired' : ''); c.textContent = `⏰ ${r.label}`; c.addEventListener('click', () => pushReminder(p, r.ctx, '지금 할 시간이에요', '⏰', true)); }
     else if (r.kind === 'routine') { c.className = 'rem' + (r.on ? ' shop' : ''); c.textContent = `🔁 루틴 ${r.times.length}개 · 알림 ${r.on ? '켬' : '끔'}`; c.title = r.times.map(t => t.label).join(', ') + (r.on ? '' : ' · 누르면 매일 이 시각마다 알림');
       c.addEventListener('click', () => { r.on = !r.on; save(); renderRems(p); tip(r.on ? '루틴 알림을 켰어요. 매일 각 시각에 푸시가 와요' : '루틴 알림을 껐어요'); }); }
     else { const past = r.date < midnight(new Date()).getTime(); c.className = 'rem' + (past ? ' fired' : ''); c.textContent = `📅 ${ddayText(r.date)} · ${r.label}`;
@@ -410,7 +423,7 @@ function renderDate() {
   const hh = String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0');
   document.querySelectorAll('[data-clock]').forEach(e => e.textContent = hh);
 }
-function renderTodayBadge() { const n = collectAll().filter(r => !r.past && r.sort !== 5).length; const b = document.getElementById('chatBtn'); b.textContent = n ? `✉ ${n}` : '✉'; }
+function renderTodayBadge() { /* no counts on purpose: the ✉ is a place to look, not a to-do */ }
 function renderHeads() {
   renderTodayBadge();
   for (const p of PANES) { $p(p, '[data-name]').textContent = names[p]; $p(p, '[data-av]').textContent = names[p].slice(0, 1);
@@ -421,7 +434,35 @@ function renderPane(p) {
   for (const o of state()[p].objects) layerOf(p).appendChild(makeObj(p, o));
   refreshReminders(p); growLayer(p);
 }
-function renderAll() { renderDate(); for (const p of PANES) renderPane(p); renderHeads(); }
+function renderAll() { renderDate(); for (const p of PANES) renderPane(p); renderHeads(); applySplit(); }
+/* ---------- the divider: 0 = partner folded to a strip, 1 = mine folded ---------- */
+const FOLD = 0.16;
+let split = 0.16; try { const v = parseFloat(localStorage.getItem('duo-memo-split')); if (!isNaN(v)) split = v; } catch {}
+function peekText(p) { const os = state()[p].objects; if (!os.length) return ''; const o = os[os.length - 1]; return excerpt(o).replace(/\s+/g, ' ').slice(0, 40); }
+function applySplit() {
+  const pf = split <= FOLD, mf = split >= 1 - FOLD;
+  paneEl('partner').classList.toggle('folded', pf); paneEl('me').classList.toggle('folded', mf);
+  // a folded card is only as tall as its head line; the other card takes the rest
+  paneEl('partner').style.flex = pf ? '0 0 auto' : mf ? '1 1 0%' : `0 0 ${(split * 100).toFixed(1)}%`;
+  paneEl('me').style.flex = mf ? '0 0 auto' : '1 1 0%';
+  for (const p of PANES) $p(p, '[data-peek]').textContent = peekText(p);
+}
+function snapSplit(v) { if (v < 0.26) return FOLD; if (v > 0.74) return 1 - FOLD; if (Math.abs(v - 0.5) < 0.08) return 0.5; return v; }
+(() => {
+  const d = document.getElementById('divider'); const cards = document.querySelector('.cards');
+  d.addEventListener('pointerdown', e => {
+    e.preventDefault(); try { d.setPointerCapture(e.pointerId); } catch {} d.classList.add('on');
+    const r = cards.getBoundingClientRect(); const strip = FOLD;
+    const mv = ev => { split = Math.max(strip, Math.min(1 - strip, (ev.clientY - r.top - 11) / (r.height - 22))); applySplit(); };
+    const up = () => { d.removeEventListener('pointermove', mv); d.removeEventListener('pointerup', up); d.removeEventListener('pointercancel', up); d.classList.remove('on');
+      split = snapSplit(split); applySplit(); try { localStorage.setItem('duo-memo-split', String(split)); } catch {} for (const p of PANES) growLayer(p); };
+    d.addEventListener('pointermove', mv); d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up);
+  });
+  // a tap on the divider just toggles between "half and half" and "mine big"
+  d.addEventListener('click', () => {});
+})();
+// a folded card unfolds when you tap its head
+for (const p of PANES) $p(p, '.chead').addEventListener('click', e => { if (!paneEl(p).classList.contains('folded') || e.target.closest('[contenteditable]')) return; split = 0.5; applySplit(); try { localStorage.setItem('duo-memo-split', '0.5'); } catch {} for (const q of PANES) growLayer(q); });
 function makeObj(p, o) {
   const el = document.createElement('div'); el.className = 'obj ' + o.type; el.dataset.id = o.id;
   el.style.left = o.x + 'px'; el.style.top = o.y + 'px'; if (o.w && o.type !== 'table') el.style.width = o.w + 'px';
@@ -564,7 +605,8 @@ function attachDrag(handle, p, o, el, isBody) {
       }
       const oRect = paneEl(other).getBoundingClientRect(), own = canvasOf(p).getBoundingClientRect(), mine = paneEl(p).getBoundingClientRect();
       const towards = Math.sign(oRect.top - mine.top) * vy;
-      if (inRect(oRect, ev.clientX, ev.clientY) || (Math.hypot(vx, vy) > 2.5 && towards > 2 && Math.abs(ev.clientY - sy) > 80)) { fly(ghost, other); el.classList.remove('lifted'); flash(el.querySelector('.mv')); notify(other, p, o, o.type); return; }
+      const dRect = document.getElementById('divider').getBoundingClientRect(); const overStrip = paneEl(other).classList.contains('folded') && ev.clientY < dRect.bottom + 8 && other === 'partner';
+      if (inRect(oRect, ev.clientX, ev.clientY) || overStrip || (Math.hypot(vx, vy) > 2.5 && towards > 2 && Math.abs(ev.clientY - sy) > 80)) { fly(ghost, other); el.classList.remove('lifted'); flash(el.querySelector('.mv')); notify(other, p, o, o.type); return; }
       if (inRect(own, ev.clientX, ev.clientY)) {
         const l = layerOf(p).getBoundingClientRect();
         o.x = Math.max(0, Math.round(ev.clientX - offX - l.left)); o.y = Math.max(0, Math.round(ev.clientY - offY - l.top));
